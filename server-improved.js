@@ -44,6 +44,11 @@ const { validateBody, validateQuery, validateParams } = require('./middleware/va
 const { errorHandler, asyncHandler } = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
 const normalizeResponse = require('./middleware/responseNormalizer');
+const { cacheMiddleware, queryCache, invalidateCache } = require('./middleware/cache');
+
+// Redis configuration
+const { connectRedis, cache } = require('./config/redis');
+const { configureSessionStore } = require('./config/session');
 
 // ─── INITIALIZE EXPRESS APP ─────────────────────────────────────────────────
 const app = express();
@@ -64,6 +69,16 @@ app.use(express.static(path.join(__dirname)));
 // Request logging and response normalization
 app.use(requestLogger);
 app.use(normalizeResponse);
+
+// ─── SESSION STORE (Redis) ────────────────────────────────────────────────
+try {
+    app.use(configureSessionStore());
+    logger.info('Session store initialized with Redis');
+} catch (error) {
+    logger.warn('Session store configuration failed, continuing without sessions', {
+        error: error.message,
+    });
+}
 
 // ─── API DOCUMENTATION ─────────────────────────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
@@ -900,31 +915,55 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// Start server
-const server = app.listen(PORT, () => {
-    logger.info('OmniDrive Backend Started', {
-        port: PORT,
-        environment: process.env.NODE_ENV || 'development',
-        mpesaBase: MPESA_BASE,
-        databasePath: dbPath,
-        apiDocs: `http://localhost:${PORT}/api-docs`,
+// ─── START SERVER ───────────────────────────────────────────────────────────
+async function startServer() {
+    // Initialize Redis
+    const redisConnected = await connectRedis();
+    
+    const server = app.listen(PORT, () => {
+        logger.info('OmniDrive Backend Started', {
+            port: PORT,
+            environment: process.env.NODE_ENV || 'development',
+            mpesaBase: MPESA_BASE,
+            databasePath: dbPath,
+            redis: redisConnected ? 'Connected' : 'Unavailable',
+            apiDocs: `http://localhost:${PORT}/api-docs`,
+        });
+
+        console.log(`\n✅ OmniDrive backend running on http://localhost:${PORT}`);
+        console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+        console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`💳 MPesa: ${MPESA_BASE}`);
+        console.log(`💾 Database: ${dbPath}`);
+        if (redisConnected) {
+            console.log(`📊 Redis: Connected (Caching enabled)`);
+        }
+        console.log();
     });
 
-    console.log(`\n✅ OmniDrive backend running on http://localhost:${PORT}`);
-    console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`💳 MPesa: ${MPESA_BASE}`);
-    console.log(`💾 Database: ${dbPath}\n`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    logger.info('SIGTERM signal received: closing HTTP server');
-    server.close(() => {
-        logger.info('HTTP server closed');
-        db.close();
-        process.exit(0);
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+        logger.info('SIGTERM signal received: closing HTTP server');
+        server.close(() => {
+            logger.info('HTTP server closed');
+            db.close();
+            if (redisConnected) {
+                try {
+                    const { redis } = require('./config/redis');
+                    redis.quit();
+                } catch (error) {
+                    logger.warn('Error closing Redis', { error: error.message });
+                }
+            }
+            process.exit(0);
+        });
     });
+}
+
+// Start the server
+startServer().catch(error => {
+    logger.error('Failed to start server', { error: error.message });
+    process.exit(1);
 });
 
 module.exports = app;

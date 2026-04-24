@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: omnidrive-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: PostgreSQL for Phase 2.2
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: omnidrive-postgres
+  #   environment:
+  #     POSTGRES_DB: omnidrive
+  #     POSTGRES_USER: omnidrive
+  #     POSTGRES_PASSWORD: omnidrive_secure_password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U omnidrive"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 3
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+  # postgres_data:
+
+networks:
+  default:
+    name: omnidrive-network

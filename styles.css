@@ -176,8 +176,6 @@
     position: relative;
     overflow: hidden;
     z-index: 100;
-    pointer-events: none;
-    z-index: 100;
 }
 
 .splash-enter-btn:hover {
