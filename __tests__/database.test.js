@@ -116,7 +116,7 @@ describe('Database Operations', () => {
             stmt.run('Honda', 'Civic', 180000, 'Japan');
             stmt.run('Honda', 'Civic', 180000, 'Japan');
 
-            const selectStmt = db.prepare('SELECT COUNT(*) as count FROM listings WHERE brand = "Honda"');
+            const selectStmt = db.prepare("SELECT COUNT(*) as count FROM listings WHERE brand = 'Honda'");
             const result = selectStmt.get();
 
             expect(result.count).toBe(2);

@@ -9,15 +9,15 @@ function normalizeResponse(req, res, next) {
         // Ensure response follows standard format
         if (data && typeof data === 'object') {
             const normalized = {
-                success: data.success !== undefined ? data.success : true,
-                data: data.data || data,
+                success: data.success !== undefined ? data.success : (!data.error && res.statusCode < 400),
+                data: data.data || (data.error ? undefined : data),
                 error: data.error || null,
                 timestamp: new Date().toISOString(),
             };
             
-            // Don't duplicate error field if already in data
-            if (data.error && !data.data) {
-                return originalJson(normalized);
+            // Remove null error field
+            if (normalized.error === null) {
+                delete normalized.error;
             }
             
             return originalJson(normalized);

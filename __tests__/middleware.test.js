@@ -31,12 +31,12 @@ describe('Logging System', () => {
 });
 
 describe('Validation Middleware', () => {
-    const { validateRequest, validateQuery } = require('../middleware/validation');
+    const { validateBody, validateQuery } = require('../middleware/validation');
     const { z } = require('zod');
 
     it('should validate request body', () => {
         const schema = z.object({ email: z.string().email() });
-        const middleware = validateRequest(schema);
+        const middleware = validateBody(schema);
         
         const req = { body: { email: 'test@example.com' } };
         const res = {};
@@ -48,7 +48,7 @@ describe('Validation Middleware', () => {
 
     it('should reject invalid request body', () => {
         const schema = z.object({ email: z.string().email() });
-        const middleware = validateRequest(schema);
+        const middleware = validateBody(schema);
         
         const req = { body: { email: 'invalid-email' } };
         const res = { 
