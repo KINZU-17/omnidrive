@@ -5009,23 +5009,37 @@ function showRaceResult(won, stat, mode, oppStat) {
     const resultEl = document.getElementById('raceResult');
     if (!resultEl) return;
 
+    let rewardHTML = '';
+    if (won && discount) {
+        rewardHTML = `
+                <div class="race-reward">
+                    🎁 You earned a <strong>${discount}% discount</strong> on your next purchase!
+                    <br><small>Code: <strong>RACE${discount}WIN</strong></small>
+                </div>`;
+    } else if (won) {
+        rewardHTML = `<div class="race-reward">🎁 You earned a <strong>3% discount</strong>! Code: <strong>RACE3WIN</strong></div>`;
+    } else {
+        rewardHTML = `<p class="race-lose-msg">Train harder and come back stronger! 💪</p>`;
+    }
+
+    let distanceOrScoreHTML = '';
+    if (mode === 'drag') {
+        distanceOrScoreHTML = `<p>Quarter mile in <strong>${stat}s</strong></p>`;
+    } else {
+        distanceOrScoreHTML = `<p>Your score: <strong>${stat}</strong> · Opponent: <strong>${oppStat}</strong></p>`;
+    }
+
     resultEl.innerHTML = `
         <div class="race-result ${won ? 'race-win' : 'race-lose'}">
             <div class="race-result-icon">${won ? '🏆' : '💥'}</div>
             <h2>${won ? 'YOU WIN!' : 'YOU LOSE!'}</h2>
-            ${mode === 'drag'
-                ? `<p>Quarter mile in <strong>${stat}s</strong></p>`
-                : `<p>Your score: <strong>${stat}</strong> · Opponent: <strong>${oppStat}</strong></p>`
-            }
-            ${won && discount ? `
-                <div class="race-reward">
-                    🎁 You earned a <strong>${discount}% discount</strong> on your next purchase!
-                    <br><small>Code: <strong>RACE${discount}WIN</strong></small>
-                </div>` : won ? `<div class="race-reward">🎁 You earned a <strong>3% discount</strong>! Code: <strong>RACE3WIN</strong></div>` : `<p class="race-lose-msg">Train harder and come back stronger! 💪</p>`}
+            ${distanceOrScoreHTML}
+            ${rewardHTML}
             <div class="race-result-btns">
                 <button onclick="showRaceMode()" class="btn-secondary">🔄 Race Again</button>
                 <button onclick="closeModal('raceModeModal')" class="calc-btn">🛒 Shop Now</button>
             </div>
         </div>
     `;
+}
 }

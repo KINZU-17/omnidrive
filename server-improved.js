@@ -435,13 +435,21 @@ app.post('/api/mpesa/purchase',
 
 /**
  * POST /api/mpesa/callback
- * Handle M-Pesa payment callback
+ * Handle M-Pesa payment callback with caching for idempotency
  */
-app.post('/api/mpesa/callback', (req, res) => {
+app.post('/api/mpesa/callback', asyncHandler(async (req, res) => {
     const callback = req.body?.Body?.stkCallback;
     if (!callback) return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 
     const { CheckoutRequestID, ResultCode, CallbackMetadata } = callback;
+
+    // Check cache for duplicate callbacks (M-Pesa retry detection)
+    const cacheKey = `payment:${CheckoutRequestID}`;
+    const cachedResponse = await cache.get(cacheKey);
+    if (cachedResponse) {
+        logger.info('Duplicate payment callback detected (cached)', { checkoutId: CheckoutRequestID });
+        return res.json(cachedResponse);
+    }
 
     if (ResultCode === 0) {
         const items = CallbackMetadata?.Item || [];
@@ -464,26 +472,32 @@ app.post('/api/mpesa/callback', (req, res) => {
         logger.warn('Payment failed', { resultCode: ResultCode, checkoutId: CheckoutRequestID });
     }
 
-    return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-});
+    const response = { ResultCode: 0, ResultDesc: 'Accepted' };
+    
+    // Cache the response for 5 minutes to prevent duplicate processing
+    await cache.set(cacheKey, response, 300);
+    
+    return res.json(response);
+}));
 
 /**
  * GET /api/mpesa/status/:checkoutRequestId
- * Poll payment status
+ * Poll payment status (cached for 30 seconds)
  */
-app.get('/api/mpesa/status/:checkoutRequestId', (req, res) => {
+app.get('/api/mpesa/status/:checkoutRequestId', cacheMiddleware(30), asyncHandler(async (req, res) => {
     const order = db.prepare('SELECT status, receipt, amount FROM orders WHERE checkout_id=?')
         .get(req.params.checkoutRequestId);
     return res.json(order || { status: 'pending' });
-});
+}));
 
 // ─── LISTINGS ENDPOINTS ─────────────────────────────────────────────────────
 
 /**
  * GET /api/listings
- * Get all active listings with filtering
+ * Get all active listings with filtering (cached for 10 minutes)
  */
 app.get('/api/listings',
+    queryCache(600), // Cache for 10 minutes
     validateQuery(listingQuerySchema),
     asyncHandler((req, res) => {
         const { brand, category, nation, sort, order, page, limit } = req.validated;
@@ -526,9 +540,9 @@ app.get('/api/listings',
 
 /**
  * GET /api/listings/:id
- * Get single listing
+ * Get single listing (cached for 10 minutes)
  */
-app.get('/api/listings/:id', asyncHandler((req, res) => {
+app.get('/api/listings/:id', cacheMiddleware(600), asyncHandler((req, res) => {
     const listing = db.prepare('SELECT * FROM listings WHERE id = ? AND isActive = 1').get(req.params.id);
     if (!listing) {
         return res.status(404).json({ success: false, error: 'Listing not found' });
@@ -566,6 +580,11 @@ app.post('/api/listings',
         );
 
         logger.info('Listing created', { id: result.lastInsertRowid, brand, model });
+
+        // Invalidate listing cache
+        invalidateCache('query:*listings*').catch(err => 
+            logger.warn('Cache invalidation failed', { error: err.message })
+        );
 
         return res.json({
             success: true,
@@ -609,6 +628,14 @@ app.put('/api/listings/:id',
 
         logger.info('Listing updated', { id: req.params.id });
 
+        // Invalidate listing cache
+        invalidateCache('query:*listings*').catch(err => 
+            logger.warn('Cache invalidation failed', { error: err.message })
+        );
+        invalidateCache(`route:GET:/api/listings/${req.params.id}`).catch(err => 
+            logger.warn('Cache invalidation failed', { error: err.message })
+        );
+
         return res.json({ success: true, message: 'Listing updated' });
     })
 );
@@ -622,6 +649,15 @@ app.delete('/api/listings/:id',
     asyncHandler((req, res) => {
         db.prepare('UPDATE listings SET isActive = 0 WHERE id = ?').run(req.params.id);
         logger.info('Listing deleted', { id: req.params.id });
+
+        // Invalidate listing cache
+        invalidateCache('query:*listings*').catch(err => 
+            logger.warn('Cache invalidation failed', { error: err.message })
+        );
+        invalidateCache(`route:GET:/api/listings/${req.params.id}`).catch(err => 
+            logger.warn('Cache invalidation failed', { error: err.message })
+        );
+
         return res.json({ success: true, message: 'Listing deleted' });
     })
 );
