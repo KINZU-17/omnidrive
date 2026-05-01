@@ -8,23 +8,58 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>OmniDrive - Connecting You to the Drive of Your Choice</title>
     <meta name="description" content="OmniDrive.co.ke - Your trusted vehicle marketplace. Buy cars, bikes, buses, trucks & vans. Connecting you to the drive of your choice.">
-    <meta name="keywords" content="cars, vehicles, motorcycles, buses, trucks, vans, buy car, car dealership, Kenya">
+    <meta name="keywords" content="cars, vehicles, motorcycles, buses, trucks, vans, buy car, car dealership, Kenya, used cars, pre-owned vehicles">
     <meta property="og:title" content="OmniDrive - Connecting you to the drive of your choice">
-    <meta property="og:description" content="Your trusted vehicle marketplace in Kenya">
+    <meta property="og:description" content="Your trusted vehicle marketplace in Kenya - Find your perfect vehicle today!">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://omnidrive.co.ke">
     <meta property="og:image" content="https://omnidrive.co.ke/assets/og-image.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="https://omnidrive.co.ke/assets/og-image.jpg">
+    <meta name="twitter:title" content="OmniDrive - Connecting you to the drive of your choice">
+    <meta name="twitter:description" content="Your trusted vehicle marketplace in Kenya">
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "OmniDrive",
+      "url": "https://omnidrive.co.ke",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://omnidrive.co.ke/?s={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "OmniDrive",
+      "url": "https://omnidrive.co.ke",
+      "logo": "https://omnidrive.co.ke/logo.svg",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+254-700-000000",
+        "contactType": "Customer Service",
+        "areaServed": "KE"
+      }
+    }
+    </script>
 </head>
 <body>
+    <!-- Skip to Content Link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
     <!-- ========================
          HEADER / NAVBAR
     ======================== -->
@@ -32,16 +67,18 @@
         <div class="logo">OmniDrive</div>
         <span class="tagline">Connecting you to the drive of your choice</span>
         
-        <div class="search-box">
-            <div style="position:relative;flex:1;display:flex">
-                <input type="text" id="searchBar" placeholder="Search brands or models..." oninput="applyFilters(); showSearchSuggestions()" onblur="hideSearchSuggestions()" autocomplete="off">
-                <div id="searchSuggestions" class="search-suggestions"></div>
-            </div>
-            <button class="search-btn" onclick="applyFilters()">🔍</button>
-        </div>
-        
-        <div class="nav-tools">
-            <select id="currencyPicker" onchange="updateCurrency()">
+<div class="search-box">
+    <div style="position:relative;flex:1;display:flex">
+        <label for="searchBar" class="sr-only">Search vehicles</label>
+        <input type="text" id="searchBar" placeholder="Search brands or models..." oninput="debouncedApplyFilters(); showSearchSuggestions()" onblur="hideSearchSuggestions()" autocomplete="off" aria-label="Search vehicles">
+        <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="Search suggestions"></div>
+    </div>
+    <button class="search-btn" onclick="debouncedApplyFilters()" aria-label="Search">🔍</button>
+</div>
+         
+    <div class="nav-tools" aria-label="Navigation tools">
+        <div class="currency-picker-wrapper" aria-label="Currency selector">
+            <select id="currencyPicker" onchange="updateCurrency()" aria-label="Select currency">
                 <optgroup label="Popular Currencies">
                     <option value="USD">USD - $ (US Dollar)</option>
                     <option value="EUR">EUR - € (Euro)</option>
@@ -55,6 +92,127 @@
                     <option value="NOK">NOK - kr (Norwegian Krone)</option>
                     <option value="DKK">DKK - kr (Danish Krone)</option>
                     <option value="PLN">PLN - zł (Polish Zloty)</option>
+                    <option value="CZK">CZK - Kč (Czech Koruna)</option>
+                    <option value="HUF">HUF - Ft (Hungarian Forint)</option>
+                    <option value="RON">RON - L (Romanian Leu)</option>
+                    <option value="BGN">BGN - лв (Bulgarian Lev)</option>
+                    <option value="HRK">HRK - kn (Croatian Kuna)</option>
+                    <option value="ISK">ISK - kr (Icelandic Krona)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                    <option value="CAD">CAD - $ (Canadian Dollar)</option>
+                    <option value="AUD">AUD - $ (Australian Dollar)</option>
+                    <option value="MXN">MXN - $ (Mexican Peso)</option>
+                    <option value="BRL">BRL - R$ (Brazilian Real)</option>
+                    <option value="ARS">ARS - $ (Argentine Peso)</option>
+                    <option value="CLP">CLP - $ (Chilean Peso)</option>
+                    <option value="COP">COP - $ (Colombian Peso)</option>
+                    <option value="PEN">PEN - S/ (Peruvian Sol)</option>
+                    <option value="VEB">VEB - Bs (Venezuelan Bolívar)</option>
+                </optgroup>
+                <optgroup label="Asia">
+                    <option value="INR">INR - ₹ (Indian Rupee)</option>
+                    <option value="KRW">KRW - ₩ (South Korean Won)</option>
+                    <option value="SGD">SGD - $ (Singapore Dollar)</option>
+                    <option value="HKD">HKD - $ (Hong Kong Dollar)</option>
+                    <option value="JPY">JPY - ¥ (Japanese Yen)</option>
+                    <option value="CNY">CNY - ¥ (Chinese Yuan)</option>
+                </optgroup>
+                <optgroup label="Europe">
+                    <option value="CHF">CHF - Fr (Swiss Franc)</option>
+                    <option value="SEK">SEK - kr (Swedish Krona)</option>
+                    <option value="NOK">NOK - kr (Norwegian Krone)</option>
+                    <option value="DKK">DKK - kr (Danish Krone)</option>
+                    <option value="PLN">PLN - zł (Polish Zloty)</option>
+                    <option value="CZK">CZK - Kč (Czech Koruna)</option>
+                    <option value="HUF">HUF - Ft (Hungarian Forint)</option>
+                    <option value="RON">RON - L (Romanian Leu)</option>
+                    <option value="BGN">BGN - лв (Bulgarian Lev)</option>
+                    <option value="HRK">HRK - kn (Croatian Kuna)</option>
+                    <option value="ISK">ISK - kr (Icelandic Krona)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                    <option value="CAD">CAD - $ (Canadian Dollar)</option>
+                    <option value="AUD">AUD - $ (Australian Dollar)</option>
+                    <option value="MXN">MXN - $ (Mexican Peso)</option>
+                    <option value="BRL">BRL - R$ (Brazilian Real)</option>
+                    <option value="ARS">ARS - $ (Argentine Peso)</option>
+                    <option value="CLP">CLP - $ (Chilean Peso)</option>
+                    <option value="COP">COP - $ (Colombian Peso)</option>
+                    <option value="PEN">PEN - S/ (Peruvian Sol)</option>
+                    <option value="VEB">VEB - Bs (Venezuelan Bolívar)</option>
+                </optgroup>
+                <optgroup label="Asia">
+                    <option value="INR">INR - ₹ (Indian Rupee)</option>
+                    <option value="KRW">KRW - ₩ (South Korean Won)</option>
+                    <option value="SGD">SGD - $ (Singapore Dollar)</option>
+                    <option value="HKD">HKD - $ (Hong Kong Dollar)</option>
+                    <option value="MYR">MYR - RM (Malaysian Ringgit)</option>
+                    <option value="THB">THB - ฿ (Thai Baht)</option>
+                    <option value="IDR">IDR - Rp (Indonesian Rupiah)</option>
+                    <option value="PHP">PHP - ₱ (Philippine Peso)</option>
+                    <option value="VND">VND - ₫ (Vietnamese Dong)</option>
+                    <option value="PKR">PKR - ₨ (Pakistani Rupee)</option>
+                    <option value="BDT">BDT - ৳ (Bangladeshi Taka)</option>
+                    <option value="TWD">TWD - $ (Taiwan Dollar)</option>
+                </optgroup>
+                <optgroup label="Middle East">
+                    <option value="AED">AED - د.إ (UAE Dirham)</option>
+                    <option value="SAR">SAR - ر.س (Saudi Riyal)</option>
+                    <option value="ILS">ILS - ₪ (Israeli Shekel)</option>
+                    <option value="TRY">TRY - ₺ (Turkish Lira)</option>
+                    <option value="EGP">EGP - E£ (Egyptian Pound)</option>
+                    <option value="KWD">KWD - د.ك (Kuwaiti Dinar)</option>
+                    <option value="QAR">QAR - ر.ق (Qatari Riyal)</option>
+                    <option value="BHD">BHD - .د.ب (Bahraini Dinar)</option>
+                    <option value="OMR">OMR - ر.ع (Omani Rial)</option>
+                </optgroup>
+                <optgroup label="Africa">
+                    <option value="ZAR">ZAR - R (South African Rand)</option>
+                    <option value="NGN">NGN - ₦ (Nigerian Naira)</option>
+                    <option value="KES">KES - KSh (Kenyan Shilling)</option>
+                    <option value="GHS">GHS - ₵ (Ghanaian Cedi)</option>
+                    <option value="MAD">MAD - د.م. (Moroccan Dirham)</option>
+                    <option value="TND">TND - د.ت (Tunisian Dinar)</option>
+                </optgroup>
+                <optgroup label="Oceania">
+                    <option value="NZD">NZD - $ (New Zealand Dollar)</option>
+                    <option value="FJD">FJD - $ (Fiji Dollar)</option>
+                    <option value="PGK">PGK - K (Papua New Guinean Kina)</option>
+                </optgroup>
+            </select>
+            
+            <button onclick="toggleTheme()" class="theme-btn" title="Toggle Theme">🌙</button>
+            
+            <button onclick="showFinancingCalc()" class="finance-btn" title="Financing Calculator">💰</button>
+            
+            <div class="wishlist-badge" onclick="showWishlistModal()" title="View Wishlist">
+                ❤️ <span id="wishCount">0</span>
+            </div>
+            
+            <button onclick="showPriceAlerts()" class="finance-btn" title="Price Alerts">🔔</button>
+            
+            <button onclick="showRaceMode()" class="finance-btn race-nav-btn" title="Race Mode">🏎️ Race</button>
+            <button onclick="showDealerLocator('')" class="finance-btn" title="Find Nearest Dealer">📍 Dealers</button>
+            
+            <button onclick="showMpesaPayment(1, 50000)" class="finance-btn" title="MPesa Payment">💳</button>
+            
+            <button onclick="showAuthModal()" class="finance-btn" title="Account">👤</button>
+            
+            <button onclick="showOrderTracking()" class="finance-btn" title="Orders">📦</button>
+            
+            <button onclick="showLiaisonModal()" class="finance-btn" title="Become a Partner">🤝</button>
+            
+            <button onclick="showListVehicleModal()" class="finance-btn" title="Sell Your Vehicle">💰</button>
+            
+            <button onclick="showVinCheck()" class="finance-btn" title="VIN Check">🔍</button>
+            <button onclick="showRecommendations()" class="btn-recs" title="AI Recommendations">✨ For You</button>
+            <button onclick="showNewsletterModal()" class="finance-btn" title="Newsletter">📧</button>
+        </div>
+        <button class="hamburger" onclick="document.querySelector('.nav-tools').classList.toggle('mobile-open')" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </header>>
                     <option value="CZK">CZK - Kč (Czech Koruna)</option>
                     <option value="HUF">HUF - Ft (Hungarian Forint)</option>
                     <option value="RON">RON - L (Romanian Leu)</option>
@@ -167,7 +325,7 @@
             </div>
             <div class="splash-tagline">Connecting you to the drive of your choice</div>
             <div class="splash-sub">Kenya's Premier Vehicle Marketplace</div>
-            <button class="splash-enter-btn" onclick="showLoginModal()">Enter Showroom →</button>
+            <button class="splash-enter-btn" onclick="window.location.href='login.html'">Enter Showroom →</button>
         </div>
         <div class="splash-footer">omnidrive.co.ke</div>
     </div>
@@ -265,19 +423,19 @@
         <!-- TOP FILTER BAR -->
         <div class="filter-bar" id="filterBar">
             <div class="filter-bar-primary">
-                <select id="categoryFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="categoryFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">All Types</option>
                     <option value="Car">Cars &#x1F697;</option>
                     <option value="Bike">Bikes &#x1F3CD;&#xFE0F;</option>
                     <option value="Bus">Buses &#x1F68C;</option>
                 </select>
-                <select id="conditionFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="conditionFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Any Condition</option>
                     <option value="New">New</option>
                     <option value="Used">Used</option>
                     <option value="Certified Pre-Owned">CPO</option>
                 </select>
-                <select id="bodyStyleFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="bodyStyleFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Body Style</option>
                     <option value="Sedan">Sedan</option>
                     <option value="SUV">SUV</option>
@@ -288,7 +446,7 @@
                     <option value="Hatchback">Hatchback</option>
                     <option value="Wagon">Wagon</option>
                 </select>
-                <select id="fuelFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="fuelFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Fuel Type</option>
                     <option value="Gasoline">Gasoline</option>
                     <option value="Diesel">Diesel</option>
@@ -296,14 +454,14 @@
                     <option value="Hybrid">Hybrid</option>
                     <option value="Plug-in Hybrid">Plug-in Hybrid</option>
                 </select>
-                <select id="drivetrainFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="drivetrainFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Drivetrain</option>
                     <option value="AWD">AWD</option>
                     <option value="RWD">RWD</option>
                     <option value="FWD">FWD</option>
                     <option value="4WD">4WD</option>
                 </select>
-                <select id="nationFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="nationFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Origin</option>
                     <option value="Japan">Japan &#x1F1EF;&#x1F1F5;</option>
                     <option value="Germany">Germany &#x1F1E9;&#x1F1EA;</option>
@@ -317,7 +475,7 @@
                     <option value="France">France &#x1F1EB;&#x1F1F7;</option>
                     <option value="Croatia">Croatia &#x1F1ED;&#x1F1F7;</option>
                 </select>
-                <select id="colorFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="colorFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Color</option>
                     <option value="Black">Black</option>
                     <option value="White">White</option>
@@ -329,7 +487,7 @@
                     <option value="Orange">Orange</option>
                     <option value="Green">Green</option>
                 </select>
-                <select id="cityFilter" onchange="applyFilters()" class="filter-pill">
+                <select id="cityFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                     <option value="all">Location</option>
                     <option value="Nairobi">Nairobi</option>
                     <option value="Mombasa">Mombasa</option>
@@ -346,15 +504,15 @@
                 <div class="filter-advanced-row">
                     <div class="filter-range-group">
                         <label>Min Price: <strong id="minPriceDisplay">$0</strong></label>
-                        <input type="range" id="minPriceRange" min="0" max="30000000" step="10000" value="0" oninput="applyFilters()">
+                        <input type="range" id="minPriceRange" min="0" max="30000000" step="10000" value="0" oninput="debouncedApplyFilters()">
                     </div>
                     <div class="filter-range-group">
                         <label>Max Price: <strong id="priceDisplay">$3,000,000</strong></label>
-                        <input type="range" id="priceRange" min="10000" max="30000000" step="10000" value="3000000" oninput="applyFilters()">
+                        <input type="range" id="priceRange" min="10000" max="30000000" step="10000" value="3000000" oninput="debouncedApplyFilters()">
                     </div>
                     <div class="filter-range-group">
                         <label>Sort By</label>
-                        <select id="sortFilter" onchange="applyFilters()" class="filter-pill">
+                        <select id="sortFilter" onchange="debouncedApplyFilters()" class="filter-pill">
                             <option value="default">Default</option>
                             <option value="price-low">Price: Low &rarr; High</option>
                             <option value="price-high">Price: High &rarr; Low</option>
@@ -746,8 +904,86 @@
         </div>
     </div>
 
-    <!-- Back to Top -->
-    <button id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+     <!-- Feedback Modal -->
+     <div id="feedbackModal" class="modal hidden">
+         <div class="modal-content">
+             <div class="modal-header">
+                 <button class="back-btn" onclick="closeModal('feedbackModal')">← Back</button>
+                 <button class="close-btn" onclick="closeModal('feedbackModal')">✕ Exit</button>
+             </div>
+             <h2>⭐ Rate OmniDrive</h2>
+             <p class="modal-subtitle">Help us improve your experience</p>
+              <div class="feedback-form">
+                  <div class="filter-group">
+                      <label>Feedback Type</label>
+                      <select id="feedbackType">
+                          <option value="">Select feedback type</option>
+                          <option value="bug">Bug Report</option>
+                          <option value="feature">Feature Request</option>
+                          <option value="general">General Feedback</option>
+                          <option value="praise">Praise & Compliment</option>
+                      </select>
+                  </div>
+                  <div class="filter-group">
+                      <label>Overall Rating</label>
+                      <div class="rating-stars">
+                          <span class="star" data-value="1" onclick="setRating(1)">★</span>
+                          <span class="star" data-value="2" onclick="setRating(2)">★</span>
+                          <span class="star" data-value="3" onclick="setRating(3)">★</span>
+                          <span class="star" data-value="4" onclick="setRating(4)">★</span>
+                          <span class="star" data-value="5" onclick="setRating(5)">★</span>
+                      </div>
+                      <input type="hidden" id="ratingValue" value="0">
+                  </div>
+                  <div class="filter-group">
+                      <label>What do you like most?</label>
+                      <select id="feedbackLike">
+                          <option value="">Select what you like most</option>
+                          <option value="vehicle_selection">Vehicle Selection</option>
+                          <option value="pricing">Pricing & Value</option>
+                          <option value="user_interface">User Interface</option>
+                          <option value="customer_support">Customer Support</option>
+                          <option value="search_functionality">Search & Filters</option>
+                          <option value="mobile_experience">Mobile Experience</option>
+                          <option value="other">Other</option>
+                      </select>
+                  </div>
+                  <div class="filter-group">
+                      <label>How can we improve?</label>
+                      <textarea id="feedbackImprove" placeholder="Your suggestions for improvement..." rows="4" maxlength="500" oninput="updateCharCount()"></textarea>
+                      <div class="char-count" id="charCount">0/500 characters</div>
+                  </div>
+                  <div class="filter-group">
+                      <label>Would you recommend us?</label>
+                      <select id="feedbackRecommend">
+                          <option value="">Select your recommendation</option>
+                          <option value="yes_definitely">Yes, definitely</option>
+                          <option value="yes_probably">Yes, probably</option>
+                          <option value="not_sure">Not sure</option>
+                          <option value="no_probably">No, probably</option>
+                          <option value="no_definitely">No, definitely</option>
+                      </select>
+                  </div>
+                  <div class="filter-group">
+                      <label>Email (optional for follow-up)</label>
+                      <input type="email" id="feedbackEmail" placeholder="your@email.com">
+                  </div>
+                  <div class="filter-group">
+                      <label>Attach screenshot (optional)</label>
+                      <div class="upload-area">
+                          <p>Drag & drop or click to upload</p>
+                          <input type="file" id="feedbackScreenshot" accept="image/*" style="display: none;">
+                          <button type="button" onclick="document.getElementById('feedbackScreenshot').click()">Choose File</button>
+                          <div id="feedbackFileInfo"></div>
+                      </div>
+                  </div>
+                  <button onclick="submitFeedback()" class="calc-btn">Submit Feedback</button>
+                  <div id="feedbackResult" class="feedback-result"></div>
+              </div>
+          </div>
+      </div>
+  </div>
+     </div>
 
     <!-- Bottom Nav (mobile) -->
     <nav class="bottom-nav">

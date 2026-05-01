@@ -1,89 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Glitch Login</title>
+    <title>OmniDrive - Login</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <div class="wrapper">
-        <div class="container">
-            <div class="user-avatar">
-                <i class="fa fa-user"></i>
+<body class="login-page">
+    <!-- Background Elements -->
+    <div class="login-bg">
+        <div class="login-light-left"></div>
+        <div class="login-light-right"></div>
+        <div class="login-particles" id="loginParticles"></div>
+    </div>
+
+    <div class="login-container">
+        <!-- Header with Logo -->
+        <div class="login-header">
+            <div class="login-logo">OmniDrive</div>
+            <p class="login-tagline">Connecting you to the drive of your choice</p>
+        </div>
+
+        <!-- USER TYPE SELECTION (Initial Step) -->
+        <div id="userTypeSection" class="login-section active">
+            <div class="login-form-box">
+                <h2>Welcome to OmniDrive</h2>
+                <p class="section-subtitle">WHO IS ENTERING THE DEALERSHIP?</p>
+                
+                <div class="user-type-grid">
+                    <button class="user-type-card" onclick="selectUserType('client')" data-type="client">
+                        <div class="user-type-icon">👤</div>
+                        <div class="user-type-name">Client</div>
+                        <div class="user-type-desc">Browse & Buy Vehicles</div>
+                    </button>
+                    
+                    <button class="user-type-card" onclick="selectUserType('dealer')" data-type="dealer">
+                        <div class="user-type-icon">🏢</div>
+                        <div class="user-type-name">Dealer</div>
+                        <div class="user-type-desc">List & Sell Vehicles</div>
+                    </button>
+                    
+                    <button class="user-type-card" onclick="selectUserType('liaison')" data-type="liaison">
+                        <div class="user-type-icon">🤝</div>
+                        <div class="user-type-name">Technical Liaison</div>
+                        <div class="user-type-desc">Connect Buyers & Sellers</div>
+                    </button>
+                    
+                    <button class="user-type-card" onclick="selectUserType('admin')" data-type="admin">
+                        <div class="user-type-icon">🛡️</div>
+                        <div class="user-type-name">Admin</div>
+                        <div class="user-type-desc">Manage Platform</div>
+                    </button>
+                </div>
             </div>
-            <form id="loginForm" class="form-section active">
-                <h2>LOGIN</h2>
-                <p class="warning">Please fill the input fields before proceeding</p>
-                <div class="field">
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" class="login-section">
+            <div class="login-form-box">
+                <button type="button" class="back-btn" onclick="backToUserType()" title="Go back">←</button>
+                <h2 id="loginFormTitle">LOGIN</h2>
+                <p class="warning" id="loginWarning"></p>
+                
+                <div class="form-field">
                     <input type="text" id="username" placeholder="Username" required>
                     <i class="fa fa-user"></i>
                 </div>
 
-                <div class="field">
+                <div class="form-field">
                     <input type="password" id="password" placeholder="Password" required>
                     <i class="fa fa-lock"></i>
                 </div>
 
-                <div class="meta">
-                    <label><input type="checkbox"> Remember me</label>
-                    <a href="#" id="forgetPasswordLink">Forget Password?</a>
+                <div class="form-meta">
+                    <label class="remember-me"><input type="checkbox"> Remember me</label>
+                    <a href="#" id="forgetPasswordLink" onclick="showForgetPassword(event)">Forgot Password?</a>
                 </div>
 
-                <div class="btn-box">
-                    <button type="submit" id="vanishBtn">Login</button>
-                </div>
+                <button type="submit" class="login-btn" id="loginBtn">Login</button>
 
-                <p class="footer">Don't have an Account? <a href="#" id="signUpLink">Sign up</a></p>
-            </form>
+                <p class="form-footer">Don't have an Account? <a href="#" id="signUpLink" onclick="showSignup(event)">Sign up</a></p>
+            </div>
+        </form>
 
-            <form id="signUpForm" class="form-section">
+        <!-- SIGN UP FORM -->
+        <form id="signUpForm" class="login-section">
+            <div class="login-form-box">
+                <button type="button" class="back-btn" onclick="backToUserType()" title="Go back">←</button>
                 <h2>SIGN UP</h2>
                 <p class="warning" id="signUpWarning"></p>
-                <div class="field">
+                
+                <div class="form-field">
                     <input type="email" id="signUpEmail" placeholder="Email" required>
                     <i class="fa fa-envelope"></i>
                 </div>
 
-                <div class="field">
+                <div class="form-field">
                     <input type="text" id="signUpUsername" placeholder="Username" required>
                     <i class="fa fa-user"></i>
                 </div>
 
-                <div class="field">
+                <div class="form-field">
                     <input type="password" id="signUpPassword" placeholder="Password" required>
                     <i class="fa fa-lock"></i>
                 </div>
 
-                <div class="field">
+                <div class="form-field">
                     <input type="password" id="signUpConfirmPassword" placeholder="Confirm Password" required>
                     <i class="fa fa-lock"></i>
                 </div>
 
-                <div class="btn-box">
-                    <button type="submit" id="signUpBtn">Sign Up</button>
-                </div>
+                <button type="submit" class="login-btn" id="signUpBtn">Create Account</button>
 
-                <p class="footer">Already have an Account? <a href="#" id="loginLink">Login</a></p>
-            </form>
+                <p class="form-footer">Already have an Account? <a href="#" id="loginLink" onclick="showLogin(event)">Login</a></p>
+            </div>
+        </form>
 
-            <form id="forgetPasswordForm" class="form-section">
-                <h2>FORGET PASSWORD</h2>
+        <!-- FORGET PASSWORD FORM -->
+        <form id="forgetPasswordForm" class="login-section">
+            <div class="login-form-box">
+                <button type="button" class="back-btn" onclick="backToUserType()" title="Go back">←</button>
+                <h2>RESET PASSWORD</h2>
                 <p class="warning" id="forgetWarning"></p>
-                <div class="field">
+                
+                <div class="form-field">
                     <input type="email" id="forgetEmail" placeholder="Email" required>
                     <i class="fa fa-envelope"></i>
                 </div>
 
-                <div class="btn-box">
-                    <button type="submit" id="resetBtn">Reset Password</button>
-                </div>
+                <button type="submit" class="login-btn" id="resetBtn">Reset Password</button>
 
-                <p class="footer">Remember your password? <a href="#" id="backToLoginLink">Login</a></p>
-            </form>
-        </div>
+                <p class="form-footer">Remember your password? <a href="#" id="backToLoginLink" onclick="showLogin(event)">Back to Login</a></p>
+            </div>
+        </form>
     </div>
-    <script src="index.js"></script>
+
+    <script src="login.js"></script>
 </body>
 </html>

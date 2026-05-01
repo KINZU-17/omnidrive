@@ -210,6 +210,19 @@ function performLogin() {
         setTimeout(() => showSection('admin'), 500);
     } else if (selectedUserType === 'dealer') {
         setTimeout(() => showSection('dealers'), 500);
+    } else if (selectedUserType === 'liaison') {
+        setTimeout(() => showSection('liaison'), 500);
+    } else if (selectedUserType === 'client') {
+        // For clients, show the main vehicle showroom
+        setTimeout(() => {
+            // Close login modal first if it's still open
+            closeLoginModal();
+            // Show the main showroom (vehicle grid)
+            document.querySelector('.main-wrapper').classList.remove('hidden');
+            // Ensure we're on the grid view
+            setView('grid');
+            highlightBottomNav(document.querySelector('.bottom-nav-item[onclick*="setView(\'grid\')"]));
+        }, 500);
     }
 }
 
@@ -1123,6 +1136,7 @@ async function init() {
     render();
     hideLoadingSpinner();
     setupInfiniteScroll();
+    setupSearchDebounce(); // Add debounced search
 }
 
 function checkCookieConsent() {
@@ -1331,6 +1345,10 @@ function render(data = inventory) {
 
     updateFilterPillStates();
     renderRecentlyViewed();
+    
+    // Setup lazy loading for images
+    setupLazyLoading();
+    enhanceImagesForLazyLoading();
 }
 
 function renderCards(data) {
@@ -1346,42 +1364,33 @@ function renderCards(data) {
         const dealer = car.dealerRef ? getDealerById(car.dealerRef) : assignDealer(car.id);
         const verifiedBadge = dealer?.verified ? '<span class="dealer-verified">✔ Verified</span>' : '';
         const featuredBadge = car.featured ? '<span class="deal-badge badge-featured">🚀 Featured</span>' : '';
-
+        
         grid.innerHTML += `
-            <div class="car-card ${car.featured ? 'card-featured' : ''}">
-                <div class="img-wrap" onclick="showDetailModal(${car.id})" style="cursor:pointer">
-                    <img src="${sanitize(car.img || '')}" 
-                         loading="lazy"
-                         data-brand="${sanitize(car.brand)}" data-model="${sanitize(car.model)}"
-                         onerror="handleImageError(this)"
-                         alt="${sanitize(car.brand)} ${sanitize(car.model)}">
+            <div class="car-card" onclick="toggleCompare(${car.id})" oncontextmenu="event.preventDefault(); showDetailModal(${car.id}); return false;">
+                <div class="img-wrap">
+                    <img src="${sanitize(car.img)}" alt="${sanitize(car.brand)} ${sanitize(car.model)}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/400x250/161b22/febd69?text=No+Image'">
+                    ${badge}
+                    ${featuredBadge}
+                    <div class="heart-icon" onclick="toggleWishlist(${car.id}); event.stopPropagation();">${isFavorited ? '❤️' : '🤍'}</div>
                 </div>
-                <span class="heart-icon ${isFavorited ? 'active' : ''}" 
-                      onclick="toggleWishlist(${car.id})">♥</span>
-                ${featuredBadge}${badge}
-                <span class="condition-badge ${car.condition === 'New' ? 'badge-new' : car.condition === 'Used' ? 'badge-used' : 'badge-cpo'}">${sanitize(car.condition || 'New')}</span>
-                <h3 onclick="showDetailModal(${car.id})" style="cursor:pointer">${sanitize(car.brand)} ${sanitize(car.model)}</h3>
-                <div class="rating-display">⭐ ${sanitize(car.rating || 'N/A')} <span class="year-badge">${sanitize(car.year)}</span></div>
-                <p class="specs-mini">${sanitize(car.color)} • ${sanitize(car.fuel)} • ${sanitize(car.drivetrain)} • ${sanitize(car.bodyStyle)}</p>
-                <div class="dealer-info-card">
-                    <span class="dealer-city">📍 ${sanitize(dealer?.city || car.nation)}</span>
-                    <span class="dealer-name-small">${sanitize(dealer?.name || 'OmniDrive Partner')} ${verifiedBadge}</span>
-                </div>
-                <p class="price">${formatPrice(car.price)}</p>
-                <p class="shipping-fee">+ ${formatPrice(freight)} Shipping</p>
-                <div class="card-actions">
-                    <button class="btn-view" onclick="showDetailModal(${car.id})">View Details</button>
-                    <button class="btn-wish" onclick="toggleWishlist(${car.id})">${isFavorited ? '❤️' : '🤍'}</button>
-                    <button class="btn-share" onclick="shareVehicle('${sanitize(car.brand)} ${sanitize(car.model)}', ${car.price})">📤</button>
-                </div>
-                <p class="${availClass}">${car.availability === 'Pre-Order' ? '📦 ' + sanitize(car.availability) : '✓ ' + sanitize(car.availability)}</p>
-                <div class="car-card-buttons">
-                    <button class="btn-primary" onclick="showDetailModal(${car.id})">View Details</button>
-                    <button class="btn-contact" onclick="directContactDealer(${car.id})">📞 Contact Dealer</button>
+                <div class="car-content">
+                    <h3>${sanitize(car.brand)} ${sanitize(car.model)}</h3>
+                    <div class="origin">${sanitize(car.nation)}</div>
+                    <p class="price">${formatPrice(car.price)}</p>
+                    <p class="shipping-fee">+ ${formatPrice(freight)} shipping</p>
+                    <p class="availability ${availClass}">${getAvailabilityText(car.availability)}</p>
+                    ${car.urgency ? `<p class="urgency">${car.urgency}</p>` : ''}
+                    <div class="car-card-buttons">
+                        <button class="btn-primary" onclick="showDetailModal(${car.id}); event.stopPropagation();">Details</button>
+                        <button class="btn-secondary" onclick="showMpesaPayment(${car.id}, ${car.price}); event.stopPropagation();">MPesa</button>
+                    </div>
                 </div>
             </div>
         `;
     });
+    
+    // Add lazy loading observer for images
+    setupLazyLoading();
 }
 
 function appendCards(data) {
@@ -3574,11 +3583,70 @@ function directContactDealer(carId) {
 
 
 // ============================================
-// FINANCING CALCULATOR
+// LAZY LOADING
 // ============================================
 
-function showFinancingCalc() {
-    document.getElementById('financeModal').classList.remove('hidden');
+function setupLazyLoading() {
+    const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+    if ('IntersectionObserver' in window) {
+        const lazyImageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const lazyImage = entry.target;
+                    lazyImage.src = lazyImage.dataset.src || lazyImage.src;
+                    lazyImage.removeAttribute('data-src');
+                    lazyImageObserver.unobserve(lazyImage);
+                }
+            });
+        });
+
+        lazyImages.forEach(lazyImage => {
+            lazyImageObserver.observe(lazyImage);
+        });
+    } else {
+        // Fallback for browsers without IntersectionObserver
+        lazyImages.forEach(img => {
+            img.src = img.src;
+        });
+    }
+}
+
+// Add data-src attribute for lazy loading
+function enhanceImagesForLazyLoading() {
+    const images = document.querySelectorAll('.car-card img');
+    images.forEach(img => {
+        if (!img.dataset.src) {
+            img.dataset.src = img.src;
+            // Use a placeholder until real image loads
+            img.src = 'https://placehold.co/400x250/161b22/febd69?text=Loading...';
+        }
+    });
+}
+
+// ============================================
+// DEBOUNCED SEARCH
+// ============================================
+
+let searchTimeout;
+function debouncedApplyFilters() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 300); // 300ms debounce
+}
+
+// Update search input to use debounced function
+function setupSearchDebounce() {
+    const searchInput = document.getElementById('searchBar');
+    const mobileSearchInput = document.getElementById('mobileSearchInput');
+    
+    if (searchInput) {
+        searchInput.removeEventListener('input', applyFilters);
+        searchInput.addEventListener('input', debouncedApplyFilters);
+    }
+    
+    if (mobileSearchInput) {
+        mobileSearchInput.removeEventListener('input', applyFilters);
+        mobileSearchInput.addEventListener('input', debouncedApplyFilters);
+    }
 }
 
 function closeFinanceModal() {
@@ -5041,5 +5109,367 @@ function showRaceResult(won, stat, mode, oppStat) {
             </div>
         </div>
     `;
+}
+
+// ============================================
+// FEEDBACK SYSTEM
+// ============================================
+
+let currentRating = 0;
+
+function setRating(value) {
+    currentRating = value;
+    document.getElementById('ratingValue').value = value;
+    
+    // Update star display
+    const stars = document.querySelectorAll('.rating-stars .star');
+    stars.forEach((star, index) => {
+        if (index < value) {
+            star.style.color = '#ffc107'; // Gold color for selected stars
+        } else {
+            star.style.color = '#ccc'; // Default color for unselected stars
+        }
+    });
+}
+
+function showFeedbackModal() {
+    // Reset form
+    currentRating = 0;
+    document.getElementById('ratingValue').value = '0';
+    document.getElementById('feedbackType').value = '';
+    document.getElementById('feedbackLike').value = '';
+    document.getElementById('feedbackImprove').value = '';
+    document.getElementById('feedbackRecommend').value = '';
+    document.getElementById('feedbackEmail').value = '';
+    document.getElementById('feedbackScreenshot').value = '';
+    document.getElementById('feedbackResult').innerHTML = '';
+    document.getElementById('feedbackFileInfo').innerHTML = '';
+    document.getElementById('charCount').innerHTML = '0/500 characters';
+    
+    // Reset star display
+    const stars = document.querySelectorAll('.rating-stars .star');
+    stars.forEach(star => {
+        star.style.color = '#ccc';
+    });
+    
+    const modal = document.getElementById('feedbackModal');
+    modal.classList.remove('hidden');
+}
+
+// Add character count functionality
+function updateCharCount() {
+    const textarea = document.getElementById('feedbackImprove');
+    const count = textarea.value.length;
+    const max = 500;
+    document.getElementById('charCount').innerHTML = `${count}/${max} characters`;
+    
+    // Change color if over limit
+    if (count > max) {
+        document.getElementById('charCount').style.color = 'var(--danger)';
+    } else {
+        document.getElementById('charCount').style.color = 'var(--text-secondary)';
+    }
+}
+
+// Handle file upload
+function handleFileUpload() {
+    const fileInput = document.getElementById('feedbackScreenshot');
+    const fileInfo = document.getElementById('feedbackFileInfo');
+    
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!validTypes.includes(file.type)) {
+            fileInfo.innerHTML = '<p class="error">Please upload a valid image file (JPG, PNG, GIF)</p>';
+            fileInput.value = ''; // Clear invalid file
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            fileInfo.innerHTML = '<p class="error">File size must be less than 5MB</p>';
+            fileInput.value = ''; // Clear oversized file
+            return;
+        }
+        
+        // Display file info
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        fileInfo.innerHTML = `
+            <p class="success">Selected: ${file.name} (${fileSizeMB} MB)</p>
+            <button type="button" onclick="removeFile()" class="btn-secondary" style="margin-top:5px;">Remove</button>
+        `;
+    } else {
+        fileInfo.innerHTML = '';
+    }
+}
+
+function removeFile() {
+    document.getElementById('feedbackScreenshot').value = '';
+    document.getElementById('feedbackFileInfo').innerHTML = '';
+}
+
+// Email validation function
+function validateEmail(email) {
+    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+}
+
+// ============================================
+// SECTION SWITCHING FOR USER ROLES
+// ============================================
+function showSection(sectionId) {
+    // Hide all main sections
+    document.querySelectorAll('.main-wrapper, #adminModal, #liaisonModal').forEach(section => {
+        section.classList.add('hidden');
+    });
+    
+    // Show the requested section
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.classList.remove('hidden');
+        
+        // Special handling for modals
+        if (sectionId === 'adminModal' || sectionId === 'liaisonModal') {
+            section.classList.remove('hidden');
+        }
+    }
+    
+    // If showing admin or liaison sections, also handle their internal tabs
+    if (sectionId === 'admin') {
+        showAdminTab('list'); // Default to vehicle list for admin
+    } else if (sectionId === 'liaison') {
+        showLiaisonContent(); // Show liaison dashboard
+    }
+}
+
+// ============================================
+// LIAISON DASHBOARD
+// ============================================
+function showLiaisonContent() {
+    // Show the liaison modal
+    showModal('liaisonModal');
+    
+    // Initialize liaison dashboard content
+    const liaisonContent = document.getElementById('liaisonContent');
+    liaisonContent.innerHTML = `
+        <div class="liaison-dashboard">
+            <h2>🤝 Technical Liaison Dashboard</h2>
+            <p class="liaison-subtitle">Manage your technical liaison activities</p>
+            
+            <!-- Liaison Stats -->
+            <div class="liaison-stats">
+                <div class="stat-box">
+                    <div class="stat-number" id="liaisonConnections">0</div>
+                    <div class="stat-label">Active Connections</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="liaisonDeals">0</div>
+                    <div class="stat-label">Deals Facilitated</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="liaisonEarnings">0</div>
+                    <div class="stat-label">Estimated Earnings (KES)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="liaisonRating">0.0</div>
+                    <div class="stat-label">Satisfaction Rating</div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="liaison-actions">
+                <h3>Quick Actions</h3>
+                <div class="action-grid">
+                    <button onclick="showListVehicleModal()" class="liaison-action-btn">
+                        <span>🚗</span>
+                        <span>List Vehicle</span>
+                        <p>Help clients list their vehicles</p>
+                    </button>
+                    <button onclick="showVinCheck()" class="liaison-action-btn">
+                        <span>🔍</span>
+                        <span>VIN Check</span>
+                        <p>Run vehicle history checks</p>
+                    </button>
+                    <button onclick="showFinancingCalc()" class="liaison-action-btn">
+                        <span>💰</span>
+                        <span>Financing Calc</span>
+                        <p>Calculate payment options</p>
+                    </button>
+                    <button onclick="showPriceAlerts()" class="liaison-action-btn">
+                        <span>🔔</span>
+                        <span>Price Alerts</span>
+                        <p>Set up price notifications</p>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="liaison-recent">
+                <h3>Recent Activity</h3>
+                <div id="liaisonActivityFeed">
+                    <p class="liaison-no-activity">No recent activity yet</p>
+                </div>
+            </div>
+            
+            <!-- Tools & Resources -->
+            <div class="liaison-tools">
+                <h3>Tools & Resources</h3>
+                <div class="tool-grid">
+                    <button onclick="showImportCalc()" class="liaison-tool-btn">
+                        <span>📦</span>
+                        <span>Import Calculator</span>
+                    </button>
+                    <button onclick="showTradeInCalc()" class="liaison-tool-btn">
+                        <span>🔄</span>
+                        <span>Trade-In Value</span>
+                    </button>
+                    <button onclick="showInsuranceCalc()" class="liaison-tool-btn">
+                        <span>🛡️</span>
+                        <span>Insurance Quotes</span>
+                    </button>
+                    <button onclick="showShippingCalc()" class="liaison-tool-btn">
+                        <span>🚢</span>
+                        <span>Shipping Calculator</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Initialize liaison stats (in a real app, this would come from API)
+    initializeLiaisonStats();
+}
+
+// Initialize liaison dashboard stats
+function initializeLiaisonStats() {
+    // In a real app, these would come from user's actual data via API
+    // For demo, we'll use random values or localStorage
+    
+    const connections = Math.floor(Math.random() * 50) + 5;
+    const deals = Math.floor(Math.random() * 20) + 2;
+    const earnings = (deals * 15000) + Math.floor(Math.random() * 50000);
+    const rating = (Math.random() * 2 + 3.5).toFixed(1); // Between 3.5 and 5.5
+    
+    document.getElementById('liaisonConnections').textContent = connections;
+    document.getElementById('liaisonDeals').textContent = deals;
+    document.getElementById('liaisonEarnings').textContent = formatPrice(earnings);
+    document.getElementById('liaisonRating').textContent = rating;
+}
+
+// ============================================
+// USER ROLE HANDLING (Enhanced)
+// ============================================
+function handleUserLogin(userType, username) {
+    // Close login modal
+    closeLoginModal();
+    
+    // Show success message
+    showNotification(`Welcome, ${username}! You are logged in as ${userType}.`, 'success');
+    
+    // Route to appropriate section based on user type
+    setTimeout(() => {
+        if (userType === 'admin') {
+            showSection('admin');
+            showAdminTab('list'); // Default to vehicle list
+        } else if (userType === 'dealer') {
+            showSection('dealers');
+        } else if (userType === 'liaison') {
+            showSection('liaison');
+            showLiaisonContent(); // Initialize liaison dashboard
+        } else if (userType === 'client') {
+            // For clients, show the main vehicle showroom
+            document.querySelector('.main-wrapper').classList.remove('hidden');
+            setView('grid'); // Default to grid view
+            highlightBottomNav(document.querySelector('.bottom-nav-item[onclick*="setView(\'grid\')"]));
+            // Show welcome message for new clients
+            showNotification(`Welcome to OmniDrive, ${username}! Start browsing vehicles to find your dream car.`, 'info');
+        }
+    }, 500);
+}
+
+function submitFeedback() {
+    const rating = document.getElementById('ratingValue').value;
+    const type = document.getElementById('feedbackType').value;
+    const like = document.getElementById('feedbackLike').value;
+    const improve = document.getElementById('feedbackImprove').value;
+    const recommend = document.getElementById('feedbackRecommend').value;
+    const email = document.getElementById('feedbackEmail').value;
+    const screenshotFile = document.getElementById('feedbackScreenshot').files[0];
+    
+    // Validation
+    if (!rating || rating === '0') {
+        showFeedbackResult('Please select a rating', 'error');
+        return;
+    }
+    
+    if (!type) {
+        showFeedbackResult('Please select a feedback type', 'error');
+        return;
+    }
+    
+    if (!like) {
+        showFeedbackResult('Please select what you like most', 'error');
+        return;
+    }
+    
+    if (!recommend) {
+        showFeedbackResult('Please indicate if you would recommend us', 'error');
+        return;
+    }
+    
+    // Validate email if provided
+    if (email && !validateEmail(email)) {
+        showFeedbackResult('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    // Validate screenshot if provided (optional)
+    if (screenshotFile) {
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validTypes.includes(screenshotFile.type)) {
+            showFeedbackResult('Please upload a valid image file (JPG, PNG, GIF)', 'error');
+            return;
+        }
+        
+        // Optional: Check file size (e.g., max 5MB)
+        if (screenshotFile.size > 5 * 1024 * 1024) {
+            showFeedbackResult('File size must be less than 5MB', 'error');
+            return;
+        }
+    }
+    
+    // In a real app, this would send to a server API
+    console.log('Feedback submitted:', {
+        rating: parseInt(rating),
+        type,
+        like,
+        improve,
+        recommend: recommend || '',
+        email: email || null,
+        hasScreenshot: !!screenshotFile,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Simulate successful submission
+    showFeedbackResult('Thank you for your feedback!', 'success');
+    
+    // Optionally close after delay
+    setTimeout(() => {
+        closeModal('feedbackModal');
+    }, 2000);
+}
+
+function showFeedbackResult(message, type) {
+    const resultDiv = document.getElementById('feedbackResult');
+    resultDiv.innerHTML = `<p class="${type}">${message}</p>`;
+    resultDiv.style.display = 'block';
+    
+    // Auto-hide after 3 seconds for success messages
+    if (type === 'success') {
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 3000);
+    }
 }
 }

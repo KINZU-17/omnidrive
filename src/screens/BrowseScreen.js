@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
     View, Text, FlatList, TextInput, TouchableOpacity,
-    Image, StyleSheet, ScrollView, StatusBar
+    Image, StyleSheet, ScrollView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { colors, spacing, radius } from '../theme';
 import { inventory } from '../data/inventory';
@@ -13,19 +13,27 @@ export default function BrowseScreen({ navigation }) {
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('All');
     const [fuel, setFuel] = useState('All');
+    const [loading, setLoading] = useState(false);
 
     const filtered = useMemo(() => {
-        return inventory.filter(v => {
-            const matchSearch = `${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase());
-            const matchCat = category === 'All' || v.category === category;
-            const matchFuel = fuel === 'All' || v.fuel === fuel;
-            return matchSearch && matchCat && matchFuel;
+        setLoading(true);
+        // Simulate network delay for better UX
+        return new Promise(resolve => {
+            setTimeout(() => {
+                const result = inventory.filter(v => {
+                    const matchSearch = `${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase());
+                    const matchCat = category === 'All' || v.category === category;
+                    const matchFuel = fuel === 'All' || v.fuel === fuel;
+                    return matchSearch && matchCat && matchFuel;
+                });
+                resolve(result);
+            }, 300);
         });
     }, [search, category, fuel]);
 
     const renderVehicle = ({ item }) => (
         <TouchableOpacity
-            style={styles.card}
+            style={[styles.card, styles.cardHover]}
             onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })}
             activeOpacity={0.85}
         >
@@ -86,15 +94,27 @@ export default function BrowseScreen({ navigation }) {
                 ))}
             </ScrollView>
 
-            <Text style={styles.resultsCount}>{filtered.length} vehicles</Text>
+            {/* Loading State */}
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Loading vehicles...</Text>
+                </View>
+            ) : (
+                <>
+                    <Text style={styles.resultsCount}>{filtered.length || 0} vehicles</Text>
 
-            <FlatList
-                data={filtered}
-                keyExtractor={item => String(item.id)}
-                renderItem={renderVehicle}
-                contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
-                showsVerticalScrollIndicator={false}
-            />
+                    <FlatList
+                        data={filtered || []}
+                        keyExtractor={item => String(item.id)}
+                        renderItem={renderVehicle}
+                        contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
+                        showsVerticalScrollIndicator={false}
+                        onEndReached={() => {}}
+                        onEndReachedThreshold={0.5}
+                    />
+                </>
+            )}
         </View>
     );
 }
@@ -110,6 +130,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         fontSize: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1.41,
+        elevation: 2,
     },
     filterRow: { maxHeight: 48, marginBottom: spacing.sm },
     pill: {
@@ -120,8 +145,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         marginRight: spacing.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1,
+        transition: 'all 0.2s ease',
     },
-    pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    pillActive: { 
+        backgroundColor: colors.primary, 
+        borderColor: colors.primary,
+        transform: 'scale(1.05)'
+    },
     pillText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
     pillTextActive: { color: colors.bg },
     resultsCount: { color: colors.textMuted, fontSize: 13, paddingHorizontal: spacing.md, marginBottom: spacing.sm },
@@ -132,6 +167,21 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3.84,
+        elevation: 3,
+        transition: 'all 0.3s ease',
+    },
+    cardHover: {
+        transform: 'scale(1.02)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 5.84,
+        elevation: 5,
+        borderColor: colors.primary,
     },
     cardImage: { width: '100%', height: 200 },
     cardBody: { padding: spacing.md },
@@ -144,4 +194,15 @@ const styles = StyleSheet.create({
     badgeOrange: { backgroundColor: '#3a2a1a' },
     badgeText: { color: colors.success, fontSize: 11, fontWeight: '600' },
     cardRating: { color: colors.textMuted, fontSize: 12 },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: colors.bg,
+    },
+    loadingText: {
+        marginTop: 16,
+        color: colors.textMuted,
+        fontSize: 16,
+    },
 });
